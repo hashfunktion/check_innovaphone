@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 #
+# ---------------------------------------------------------------------------------------------------
 # check_innovaphone.py
 # Icinga check plugin for innovaphone PBX devices.
 # 
 # Copyright (C) 2019  Jesse Reppin (GitHub @hashfunktion)
+#
+# Changes:
+#   • v1.0 - first release
+#
+# ---------------------------------------------------------------------------------------------------
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +24,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#  ---------------------------------------------------------------------------------------------------
+#
 # Available checks:
 #  - Temprature of the PBX (°C)
 #  - Sync state of the PBX (ISDN Interaface)
@@ -26,6 +34,7 @@
 #
 # available options for --command: "temp", "sync", "reset-required", "srlicense"
 #
+# Befor using, change the "xmlpath" in the check plugin to a writable path for you..
 # usage for help: ./check_innovaphone.py
 # usage: ./check_innovaphone.py -H <ip or hostname> -l <username> -p <password> --command <check> -w <warning threshold> -c <critical threshold>
 #
@@ -37,8 +46,8 @@ import base64
 import ssl
 import math
 import xml.etree.ElementTree as ET
-from optparse import OptionParser
 
+## !--> CHANGE THE XML FILE PATH <-- !
 # r/w path for xml files
 xmlpath = "/home/it/csvimport/"
 
