@@ -73,7 +73,7 @@ def main():
 
     result = None
 
-    parser = argparse.ArgumentParser(description='Available arguments:')
+    parser = argparse.ArgumentParser(description='Copyright (C) 2019  Jesse Reppin (GitHub @hashfunktion) - Icinga check plugin for innovaphone PBX devices.')
     parser.add_argument('-H','--hostname', dest='host', action='store',
                         default='<IP or HOSTNAME>',
                         help='enter IP-Adress or Hostname of the innovaphone PBX')
@@ -85,7 +85,7 @@ def main():
                         help='define password from innovaphone PBX')
     parser.add_argument('--command', dest='command', action='store',
                         default='<command>',
-                        help='define the check_command that should be use (available options: "temp", "sync", "reset-required", "srlicense')
+                        help='define the check_command that should be use (available options: "temp", "sync", "reset-required", "srlicense"')
     parser.add_argument('-w','--warning', dest='warn', action='store',
                         default='<warn>',
                         help='define the warning threshold for: temp=XX(°C), srlicense=XXXXXXX(seconds) only XX without unit')
@@ -360,4 +360,5 @@ def round_down(n, decimals=0):
 if __name__ == '__main__':
     main()
     sys.exit(UNKNOWN)
+
 
