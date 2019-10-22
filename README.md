@@ -38,15 +38,15 @@ This check command depends on the following python modules:
 
       --command COMMAND
         define the check_command that should be use (available
-        options: "temp", "sync", "reset-required", "srlicense"
+        options: "temp", "sync", "reset-required", "srlicense", "mem", "cpu"
 
       -w WARN, --warning WARN
         define the warning threshold for: temp=XX(°C),
-        srlicense=XXXXXXX(seconds) only XX without unit
+        srlicense=XXXXXXX(seconds), mem=XXX(MB), cpuXX(%) only XX without unit
 
       -c CRIT, --critical CRIT
         define the critical threshold for: temp=XX(°C),
-        srlicense=XXXXXXX(seconds) only XX without unit
+        srlicense=XXXXXXX(seconds), mem=XXX(MB), cpuXX(%) only XX without unit
     
     Sample:
     ./check_innovaphone.py -H <ip or hostname> -l <username> -p <password> --command <check> -w <warning threshold> -c <critical threshold>
@@ -67,7 +67,12 @@ This check command depends on the following python modules:
 - Remaining time for software rental licenses in days, hours, minutes, seconds
 
     `OK - Remaining Time: 95 days, 4 hours, 51 minutes, 51 seconds`
+- Memory Usage in MB
 
+    `OK - Memory Usage: total: 496 MB - used: 15 MB (3%) - free: 481 MB (97%)`
+- CPU Usage in %
+
+    `OK - CPU Usage: 6%`
 
 ![Icinga2 check output:][pic-output]
 

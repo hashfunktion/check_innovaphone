@@ -8,7 +8,7 @@
 #
 # Changes:
 #   • v1.0 - first release
-#
+#   • v1.1 - add checks for mem and cpu usage
 # ---------------------------------------------------------------------------------------------------
 #
 # This program is free software: you can redistribute it and/or modify
@@ -31,8 +31,10 @@
 #  - Sync state of the PBX (ISDN Interaface)
 #  - If reset required? (true / false)
 #  - Remaining time for software rental licenses in days, hours, minutes, seconds
+#  - Memory Usage in MB
+#  - CPU Usage in %
 #
-# available options for --command: "temp", "sync", "reset-required", "srlicense"
+# available options for --command: "temp", "sync", "reset-required", "srlicense", "mem", "cpu"
 #
 # Befor using, change the "xmlpath" in the check plugin to a writable path for you..
 # usage for help: ./check_innovaphone.py
@@ -46,6 +48,7 @@ import base64
 import ssl
 import math
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 ## !--> CHANGE THE XML FILE PATH <-- !
 # r/w path for xml files
@@ -94,13 +97,13 @@ def main():
                         help='define password from innovaphone PBX')
     parser.add_argument('--command', dest='command', action='store',
                         default='<command>',
-                        help='define the check_command that should be use (available options: "temp", "sync", "reset-required", "srlicense"')
+                        help='define the check_command that should be use (available options: "temp", "sync", "reset-required", "srlicense", "mem", "cpu"')
     parser.add_argument('-w','--warning', dest='warn', action='store',
                         default='<warn>',
-                        help='define the warning threshold for: temp=XX(°C), srlicense=XXXXXXX(seconds) only XX without unit')
+                        help='define the warning threshold for: temp=XX(°C), srlicense=XXXXXXX(seconds), mem=XXX(MB), cpuXX(%) only XX without unit')
     parser.add_argument('-c','--critical', dest='crit', action='store',
                         default='<crit>',
-                        help='define the critical threshold for: temp=XX(°C), srlicense=XXXXXXX(seconds) only XX without unit')
+                        help='define the critical threshold for: temp=XX(°C), srlicense=XXXXXXX(seconds), mem=XXX(MB), cpuXX(%) only XX without unit')
 
     args = parser.parse_args()
 
@@ -115,11 +118,11 @@ def main():
     command = args.command
 
     if args.host is None:
-        print('Incorrect usage. Host is mandatory (-h).')
+        print('Incorrect usage. Host is mandatory (-H).')
         parser.print_help()
 
     elif args.command is None:
-        print('Incorrect usage. Check is mandatory.')
+        print('Incorrect usage. Check is mandatory (--command).')
         parser.print_help()
         sys.exit(UNKNOWN)
  
@@ -134,6 +137,12 @@ def main():
     
     elif args.command == "srlicense":
         srlicense()
+
+    elif args.command == "mem":
+        mem()
+    
+    elif args.command == "cpu":
+        cpu()
 
     else:
         parser.print_help()
@@ -362,12 +371,200 @@ def srlicense():
         print("Unknown Error!")
         ex(UNKNOWN)
 
-def round_down(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.floor(n * multiplier) / multiplier
+## Memory
+def mem():
+    global host
+    global crit
+    global warn
+    global command
+    global result
+    global check_exit
+    global ex
+
+    result = None
+
+    # datetime object containing current date and time
+    now = datetime.now()
+    # dd/mm/YY H:M:S
+    minute = now.strftime("%M")
+    if minute.startswith('00'):
+        hpos = "last()-1"
+        mpos = int('60')
+        mposint = mpos
+    elif minute.startswith('01'):
+        hpos = "last()-1"
+        mpos = int('60')
+        mposint = mpos
+    elif minute.startswith('0*'):
+        hpos = "last()"
+        mpos = int(minute.lstrip('0'))
+        mposint = mpos-1
+    else:
+        hpos = "last()"
+        mpos = int(minute)
+        mposint = mpos-1
+    
+    xmlhpos = str(hpos)
+    xmlmpos = str(mposint)
+
+    tempxml = '/LOG0/CNT/mod_cmd.xml?cmd=xml-count&pos=23&x=2'
+    tempurl = 'https://'+host+tempxml
+    
+    ssl.match_hostname = lambda cert, hostname: True
+    req = urllib.request.Request(tempurl)
+
+    credentials = ('%s:%s' % (username, password))
+    encoded_credentials = base64.b64encode(credentials.encode('ascii'))
+    req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode("ascii"))
+
+    res = urllib.request.urlopen(req)
+    res_body = res.read()
+
+    with open(xmlpath+command+host+'.xml', 'wb') as f:
+        f.write(res_body) 
+    tree = ET.parse(xmlpath+command+host+'.xml')
+    root = tree.getroot()
+    for info in root.iter('info'):
+        memtotal = int(info.get('s'))
+    for attribute in root.findall('h['+xmlhpos+']'):
+        for stats in attribute.findall('m['+xmlmpos+']'):
+            for value in stats.iter('m'):
+                memxmlvalue = value.get('c')
+                if memxmlvalue == None:
+                    print("UNKNOWN: value not found in xml")
+                    ex(UNKNOWN)
+                else:
+                    memusagepercentage = int(value.get('c'))
+    
+    memusagetotal = (((memtotal / 100) * memusagepercentage) / 1024)
+    memusagetotalmb = round(memusagetotal)
+    memtotalmb = (memtotal / 1024)
+    memfreetotalmb = (memtotalmb - memusagetotalmb)
+    memfreepercentage = (100 - memusagepercentage)
+
+    
+    res_memusagepercentage = str(memusagepercentage)
+    res_memusagetotal = str(memusagetotalmb)
+    res_memtotalmb = str(round(memtotal / 1024))
+    res_memfreetotal = str(round(memfreetotalmb))
+    res_memfreepercentage = str(memfreepercentage)
+
+    warn_int = int(warn)
+    crit_int = int(crit)
+
+    if memusagetotalmb >= crit_int:
+        result = "Memory Usage: total: "+res_memtotalmb+" MB - used: "+res_memusagetotal+" MB ("+res_memusagepercentage+"%) - free: "+res_memfreetotal+" MB ("+res_memfreepercentage+"%) | Memory usage="+res_memusagetotal+"MB;"+warn+"MB;"+crit+"MB"
+        check_exit = "CRITICAL"
+        print(check_exit+' - '+result)
+        ex(CRITICAL)
+
+    elif memusagetotalmb >= warn_int:
+        result = "Memory Usage: total: "+res_memtotalmb+" MB - used: "+res_memusagetotal+" MB ("+res_memusagepercentage+"%) - free: "+res_memfreetotal+" MB ("+res_memfreepercentage+"%) | Memory usage="+res_memusagetotal+"MB;"+warn+"MB;"+crit+"MB"
+        check_exit = "WARNING"
+        print(check_exit+' - '+result)
+        ex(WARNING)
+
+    elif memusagetotalmb < warn_int:
+        result = "Memory Usage: total: "+res_memtotalmb+" MB - used: "+res_memusagetotal+" MB ("+res_memusagepercentage+"%) - free: "+res_memfreetotal+" MB ("+res_memfreepercentage+"%) | Memory usage="+res_memusagetotal+"MB;"+warn+"MB;"+crit+"MB"
+        check_exit = "OK"
+        print(check_exit+' - '+result)
+        ex(OK)
+    
+    else:
+        print("Unknown Error!")
+        ex(UNKNOWN)
+
+## CPU
+def cpu():
+    global host
+    global crit
+    global warn
+    global command
+    global result
+    global check_exit
+    global ex
+
+    result = None
+
+    # datetime object containing current date and time
+    now = datetime.now()
+    # dd/mm/YY H:M:S
+    minute = now.strftime("%M")
+    if minute.startswith('00'):
+        hpos = "last()-1"
+        mpos = int('60')
+        mposint = mpos
+    elif minute.startswith('01'):
+        hpos = "last()-1"
+        mpos = int('60')
+        mposint = mpos
+    elif minute.startswith('0*'):
+        hpos = "last()"
+        mpos = int(minute.lstrip('0'))
+        mposint = mpos-1
+    else:
+        hpos = "last()"
+        mpos = int(minute)
+        mposint = mpos-1
+    
+    xmlhpos = str(hpos)
+    xmlmpos = str(mposint)
+
+    tempxml = '/LOG0/CNT/mod_cmd.xml?cmd=xml-count&pos=23&x=0'
+    tempurl = 'https://'+host+tempxml
+    
+    ssl.match_hostname = lambda cert, hostname: True
+    req = urllib.request.Request(tempurl)
+
+    credentials = ('%s:%s' % (username, password))
+    encoded_credentials = base64.b64encode(credentials.encode('ascii'))
+    req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode("ascii"))
+
+    res = urllib.request.urlopen(req)
+    res_body = res.read()
+
+    with open(xmlpath+command+host+'.xml', 'wb') as f:
+        f.write(res_body) 
+    tree = ET.parse(xmlpath+command+host+'.xml')
+    root = tree.getroot()
+    for info in root.iter('info'):
+        cpupercentagetotal = int(info.get('s'))
+    for attribute in root.findall('h['+xmlhpos+']'):
+        for stats in attribute.findall('m['+xmlmpos+']'):
+            for value in stats.iter('m'):
+                memxmlvalue = value.get('c')
+                if memxmlvalue == None:
+                    print("UNKNOWN: value not found in xml")
+                    ex(UNKNOWN)
+                else:
+                    cpuusagepercentage = int(value.get('c'))
+    
+    warn_int = int(warn)
+    crit_int = int(crit)
+    res_cpuusagepercentage = str(cpuusagepercentage)
+
+    if cpuusagepercentage >= crit_int:
+        result = "CPU Usage: "+res_cpuusagepercentage+"% | CPU Usage="+res_cpuusagepercentage+"%;"+warn+"%;"+crit+"%"
+        check_exit = "CRITICAL"
+        print(check_exit+' - '+result)
+        ex(CRITICAL)
+
+    elif cpuusagepercentage >= warn_int:
+        result = "CPU Usage: "+res_cpuusagepercentage+"% | CPU Usage="+res_cpuusagepercentage+"%;"+warn+"%;"+crit+"%"
+        check_exit = "WARNING"
+        print(check_exit+' - '+result)
+        ex(WARNING)
+
+    elif cpuusagepercentage < warn_int:
+        result = "CPU Usage: "+res_cpuusagepercentage+"% | CPU Usage="+res_cpuusagepercentage+"%;"+warn+"%;"+crit+"%"
+        check_exit = "OK"
+        print(check_exit+' - '+result)
+        ex(OK)
+    
+    else:
+        print("Unknown Error!")
+        ex(UNKNOWN)
 
 if __name__ == '__main__':
     main()
     sys.exit(UNKNOWN)
-
-
