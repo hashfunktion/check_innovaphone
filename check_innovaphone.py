@@ -9,6 +9,7 @@
 # Changes:
 #   • v1.0     - first release
 #   • v1.0.1   - add checks for mem and cpu usage
+#   • v1.0.2   - add perfdata for mem and cpu checks
 # ---------------------------------------------------------------------------------------------------
 #
 # This program is free software: you can redistribute it and/or modify
