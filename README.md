@@ -67,10 +67,10 @@ This check command depends on the following python modules:
 - Remaining time for software rental licenses in days, hours, minutes, seconds
 
     `OK - Remaining Time: 95 days, 4 hours, 51 minutes, 51 seconds`
-- Memory Usage in MB
+- Memory Usage in MB with Perfdata
 
     `OK - Memory Usage: total: 496 MB - used: 15 MB (3%) - free: 481 MB (97%)`
-- CPU Usage in %
+- CPU Usage in % with Perfdata
 
     `OK - CPU Usage: 6%`
 
