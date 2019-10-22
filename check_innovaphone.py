@@ -7,8 +7,8 @@
 # Copyright (C) 2019  Jesse Reppin (GitHub @hashfunktion)
 #
 # Changes:
-#   • v1.0 - first release
-#   • v1.1 - add checks for mem and cpu usage
+#   • v1.0     - first release
+#   • v1.0.1   - add checks for mem and cpu usage
 # ---------------------------------------------------------------------------------------------------
 #
 # This program is free software: you can redistribute it and/or modify
