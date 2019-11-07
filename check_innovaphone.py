@@ -182,8 +182,15 @@ def temp():
 
     for sys in root.iter('sys'):
         systemp = sys.get('temp')
+       
+    if systemp is None:
+        result = "Temperature not available"
 
-    if systemp > crit :
+        check_exit = "UNKNOWN"
+        print(check_exit+' - '+result)
+        ex(UNKNOWN)
+
+    elif systemp > crit :
         result = "Temprature is "+systemp+"°C | Temprature="+systemp+";"+warn+";"+crit
         check_exit = "CRITICAL"
         print(check_exit+' - '+result)
